@@ -16,16 +16,18 @@ def load_data():
 clean_df = load_data()
 
 # ---------------- Columns ----------------
-final_cols = ['gender','age','senior_citizen','dependents','number_of_dependents',
-              'phone_service','device_protection','premium_tech_support',
-              'streaming_tv','streaming_movies','streaming_music',
-              'internet_type','contract','paperless_billing','payment_method',
-              'monthly_charges','avg_monthly_long_distance_charges','tenure',
-              'avg_monthly_gb_download','unlimited_data','offer','satisfaction_score',
-              'cltv','churn_score']
+# Kolom final yang dipakai model XGBoost
+final_cols = ['age','number_of_dependents','monthly_charges','avg_monthly_long_distance_charges',
+              'tenure','avg_monthly_gb_download','number_of_referrals','satisfaction_score',
+              'cltv','churn_score','gender','senior_citizen','dependents','city','phone_service',
+              'online_security','online_backup','device_protection','premium_tech_support',
+              'streaming_tv','streaming_movies','streaming_music','internet_type','contract',
+              'paperless_billing','payment_method','multiple_lines','unlimited_data','offer']
 
 numeric_cols = ['age','number_of_dependents','monthly_charges','avg_monthly_long_distance_charges',
-                'tenure','avg_monthly_gb_download','satisfaction_score','cltv','churn_score']
+                'tenure','avg_monthly_gb_download','number_of_referrals','satisfaction_score',
+                'cltv','churn_score']
+
 cat_cols = [col for col in final_cols if col not in numeric_cols]
 
 # ColumnTransformer fit ke clean_df
@@ -124,7 +126,7 @@ with tab5:
     if submitted:
         user_input = pd.DataFrame({k:[v] for k,v in inputs.items()})
         
-        # Pastikan kolom urut sesuai final_cols
+        # Pastikan kolom urut sesuai model
         user_input = user_input[final_cols]
         
         # Preprocess
