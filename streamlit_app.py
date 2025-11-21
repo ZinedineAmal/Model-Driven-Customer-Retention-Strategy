@@ -11,7 +11,7 @@ import seaborn as sns
 MODEL_PATH = "model_churn.pkl"
 PREPROCESS_PATH = "preprocess.pkl"
 DATA_PATH = "clean_df_1.csv"
-FINAL_FEATURE_PATH = "final_features (2).pkl"
+FINAL_FEATURE_PATH = "final_features_FIXED.pkl"
 
 # ================================
 # VALIDASI FILE
