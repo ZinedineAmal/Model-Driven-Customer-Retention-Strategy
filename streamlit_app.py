@@ -3,6 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+st.set_page_config(page_title="Interactive Churn Dashboard", layout="wide")
+st.title("Interactive Customer Churn Dashboard")
+
 # Load dataset
 @st.cache_data
 def load_data(path):
@@ -11,106 +14,104 @@ def load_data(path):
 
 df = load_data("clean_df.csv")
 
-st.title("EDA Customer Churn Analysis")
+# ---------------- Global Filters ----------------
+st.sidebar.header("Filter Options")
+gender_filter = st.sidebar.multiselect("Select Gender", options=df['gender'].unique(), default=df['gender'].unique())
+age_group_filter = st.sidebar.multiselect("Select Age Group", 
+    options=['Gen Z','Millennials','Generation X','Senior Citizen'], 
+    default=['Gen Z','Millennials','Generation X','Senior Citizen'])
+tenure_group_filter = st.sidebar.multiselect("Select Tenure Group", 
+    options=['0-6 months','6-12 months','>12 months'], 
+    default=['0-6 months','6-12 months','>12 months'])
+status_filter = st.sidebar.multiselect("Customer Status", options=df['churn_value'].unique(), default=df['churn_value'].unique())
 
-# ---------------- Heatmap Correlation ----------------
-st.subheader("Correlation Matrix of Numeric Columns")
-numeric_columns = df.select_dtypes(exclude=['object']).columns
-corr_matrix = df[numeric_columns].corr()
+# Preprocessing
+df['age_group'] = pd.cut(df['age'], bins=[0,27,44,60,float('inf')],
+                         labels=['Gen Z','Millennials','Generation X','Senior Citizen'])
+df['tenure_group'] = pd.cut(df['tenure'], bins=[0,6,12,float('inf')],
+                            labels=['0-6 months','6-12 months','>12 months'])
 
-fig, ax = plt.subplots(figsize=(16,12))
-sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", annot_kws={'fontsize':8}, ax=ax)
-st.pyplot(fig)
+# Apply filters
+filtered_df = df[
+    (df['gender'].isin(gender_filter)) &
+    (df['age_group'].isin(age_group_filter)) &
+    (df['tenure_group'].isin(tenure_group_filter)) &
+    (df['churn_value'].isin(status_filter))
+]
 
-# ---------------- Churn Pie Chart ----------------
-st.subheader("Churn Rate")
-churn_counts = df['churn_value'].value_counts()
-fig2, ax2 = plt.subplots(figsize=(8,6))
-ax2.pie(
-    churn_counts,
-    labels=['No Churn','Churn'],
-    autopct='%1.1f%%',
-    colors=['indigo','salmon'],
-    explode=[0,0.05],
-    textprops={"fontsize":15}
-)
-ax2.legend(labels=['0 = No Churn', '1 = Churn'])
-st.pyplot(fig2)
+# ---------------- Tabs ----------------
+tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Churn Analysis", "Loyal Analysis", "Correlation Heatmap"])
 
-st.write(f"Total Churned: {churn_counts.get(1,0)} ({churn_counts.get(1,0)/len(df)*100:.1f}%)")
-st.write(f"Stayed / No Churn: {churn_counts.get(0,0)} ({churn_counts.get(0,0)/len(df)*100:.1f}%)")
+# ---------------- Tab 1: Overview ----------------
+with tab1:
+    st.subheader("Churn Overview")
+    churn_counts = filtered_df['churn_value'].value_counts()
+    
+    col1, col2 = st.columns(2)
+    col1.metric("Churned Customers", f"{churn_counts.get(1,0)}", f"{churn_counts.get(1,0)/len(filtered_df)*100:.1f}%")
+    col2.metric("Stayed / Loyal Customers", f"{churn_counts.get(0,0)}", f"{churn_counts.get(0,0)/len(filtered_df)*100:.1f}%")
+    
+    # Pie chart
+    fig, ax = plt.subplots(figsize=(6,6))
+    ax.pie(churn_counts, labels=['No Churn','Churn'], autopct='%1.1f%%', colors=['indigo','salmon'], explode=[0,0.05])
+    st.pyplot(fig)
 
-# ---------------- Barplot: Gender vs Churn ----------------
-st.subheader("Distribution of Churn by Gender")
-fig3, ax3 = plt.subplots(figsize=(10,4))
-sns.countplot(x='gender', hue='churn_value', data=df, palette='Reds', ax=ax3)
-ax3.set_xlabel('Gender')
-ax3.set_ylabel('Count')
-st.pyplot(fig3)
+# ---------------- Tab 2: Churn Analysis ----------------
+with tab2:
+    churned = filtered_df[filtered_df['churn_value']==1]
+    st.subheader("Churned Customer Insights")
+    
+    # Gender distribution
+    fig, ax = plt.subplots(figsize=(6,4))
+    sns.countplot(x='gender', data=churned, palette='Reds', ax=ax)
+    ax.set_title("Churned Customers by Gender")
+    st.pyplot(fig)
+    
+    # Age group
+    fig, ax = plt.subplots(figsize=(6,4))
+    churned['age_group'].value_counts().plot(kind='bar', color='orange', ax=ax)
+    ax.set_title("Churned Customers by Age Group")
+    st.pyplot(fig)
+    
+    # Online services selection
+    online_services = ['internet_service', 'online_security', 'online_backup', 'device_protection', 
+                       'premium_tech_support', 'streaming_tv', 'streaming_movies', 'streaming_music']
+    service_select = st.multiselect("Select online services to plot", online_services, default=online_services[:3])
+    
+    for col in service_select:
+        if col in churned.columns:
+            fig, ax = plt.subplots(figsize=(6,4))
+            churned[col].value_counts(normalize=True).plot(kind='pie', autopct='%1.1f%%', ax=ax, colors=sns.color_palette('rocket', len(churned[col].unique())))
+            ax.set_ylabel('')
+            ax.set_title(f"Churn Distribution by {col}")
+            st.pyplot(fig)
+    
+    # Churn reason top
+    st.subheader("Top Churn Reasons")
+    top_reasons = churned['churn_reason'].value_counts().head(10)
+    fig, ax = plt.subplots(figsize=(8,4))
+    sns.barplot(x=top_reasons.values, y=top_reasons.index, palette='magma', ax=ax)
+    ax.set_xlabel("Count")
+    ax.set_ylabel("Reason")
+    st.pyplot(fig)
 
-# ---------------- Churned Customer Analysis ----------------
-churned = df[df['churn_value']==1]
-st.subheader("Churned Customer Analysis")
+# ---------------- Tab 3: Loyal Analysis ----------------
+with tab3:
+    loyal = filtered_df[filtered_df['churn_value']==0]
+    st.subheader("Loyal Customers Insights")
+    
+    offer_group = loyal.groupby('offer')['number_of_referrals'].agg(['count', lambda x: (x>=3).sum()]).reset_index()
+    offer_group.columns = ['Offer','Total Customers','With >=3 Referrals']
+    st.dataframe(offer_group)
+    
+    st.info("Insight: Loyal customers often refer friends even without offers, showing engagement.")
 
-st.write(f"Total churned customer: {len(churned)} ({len(churned)/len(df)*100:.1f}%) from total data")
-
-# Churned by Gender
-fig4, ax4 = plt.subplots(figsize=(10,4))
-sns.countplot(x='gender', data=churned, palette='Reds', ax=ax4)
-ax4.set_xlabel('Gender')
-ax4.set_ylabel('Count')
-st.pyplot(fig4)
-
-# Age Group
-churned['age_group'] = pd.cut(churned['age'], bins=[0,27,44,60,float('inf')],
-                               labels=['Gen Z','Millennials','Generation X','Senior Citizen'])
-st.write("Churned by Age Group:")
-st.dataframe(churned['age_group'].value_counts())
-
-# ---------------- Online Services Pie Charts ----------------
-st.subheader("Online Services among Churned Customers")
-online_services = ['internet_service', 'online_security', 'online_backup', 'device_protection', 
-                   'premium_tech_support', 'streaming_tv', 'streaming_movies', 'streaming_music']
-
-fig5, axes = plt.subplots(4, 2, figsize=(16,25))
-axes = axes.flatten()
-
-for i, col in enumerate(online_services):
-    churn_per_cat = churned[col].value_counts(normalize=True)
-    axes[i].pie(churn_per_cat, labels=churn_per_cat.index, autopct='%1.1f%%',
-                startangle=90, colors=sns.color_palette('rocket', len(churn_per_cat)))
-    axes[i].set_title(f"Churned Customers by {col}")
-
-plt.tight_layout()
-st.pyplot(fig5)
-
-# ---------------- Tenure Group ----------------
-churned['tenure_group'] = pd.cut(churned['tenure'], bins=[0,6,12,float('inf')],
-                                 labels=['0-6 months','6-12 months','>12 months'])
-st.write("Churned Customer Tenure Group:")
-st.dataframe(churned['tenure_group'].value_counts())
-
-# ---------------- Offers and Referrals ----------------
-st.subheader("Offers and Referrals among Churned Customers")
-result = (
-    churned.groupby("offer")
-    .apply(lambda g: pd.Series({
-        "Total Customers": len(g),
-        "With 3 Referrals": (g["number_of_referrals"] >= 3).sum(),
-        "6 Months Tenure": (g["tenure"] >= 6).sum(),
-        "+12 Months Tenure": (g["tenure"] >= 12).sum()
-    }))
-    .reset_index()
-)
-st.dataframe(result)
-
-# ---------------- Churn Categories ----------------
-st.subheader("Churn Categories")
-st.dataframe(churned['churn_category'].value_counts())
-
-st.subheader("Churn Reasons")
-st.dataframe(churned['churn_reason'].value_counts().sort_values(ascending=False))
-
-# ---------------- Location Analysis ----------------
-st.subheader("Top Cities with Churned Customers")
-st.dataframe(churned['city'].value_counts().head(10))
+# ---------------- Tab 4: Correlation Heatmap ----------------
+with tab4:
+    st.subheader("Correlation Matrix of Numeric Columns")
+    numeric_columns = filtered_df.select_dtypes(exclude=['object']).columns
+    corr_matrix = filtered_df[numeric_columns].corr()
+    
+    fig, ax = plt.subplots(figsize=(16,12))
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", annot_kws={'fontsize':8}, ax=ax)
+    st.pyplot(fig)
