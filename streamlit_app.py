@@ -5,6 +5,8 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+st.write("Working directory:", os.getcwd())
+st.write("Files in directory:", os.listdir())
 # ================================
 # FILE PATH
 # ================================
