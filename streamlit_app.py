@@ -5,23 +5,11 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.write("Working directory:", os.getcwd())
-st.write("Files in directory:", os.listdir())
 # ================================
 # FILE PATH
 # ================================
 MODEL_PATH = "model_churn.pkl"
-PREPROCESS_PATH = "preprocess.pkl"
 DATA_PATH = "clean_df_1.csv"
-FINAL_FEATURE_PATH = "final_features_FIXED.pkl"
-
-# ================================
-# VALIDASI FILE
-# ================================
-for f in [MODEL_PATH, PREPROCESS_PATH, DATA_PATH, FINAL_FEATURE_PATH]:
-    if not os.path.exists(f):
-        st.error(f"File tidak ditemukan: {f}")
-        st.stop()
 
 # ================================
 # LOAD ASSETS
@@ -31,48 +19,14 @@ def load_model():
     return joblib.load(MODEL_PATH)
 
 @st.cache_resource
-def load_preprocess():
-    return joblib.load(PREPROCESS_PATH)
-
-@st.cache_resource
 def load_data():
     return pd.read_csv(DATA_PATH)
 
-def load_final_features():
-    return joblib.load(FINAL_FEATURE_PATH)
-
 model = load_model()
-preprocess = load_preprocess()
 df = load_data()
-final_features = load_final_features()
 
-st.write("MODEL FEATURE NAMES:")
-st.write(model.get_booster().feature_names)
-
-st.write("ISI FINAL FEATURES YANG SEBENARNYA DILOAD:")
-st.write(final_features)
-
-# DEBUGGING — CEK WORKING DIRECTORY & FILE YANG DIPAKAI
-st.write("Working directory:", os.getcwd())
-st.write("FINAL_FEATURE_PATH:", FINAL_FEATURE_PATH)
-st.write("File exists?", os.path.exists(FINAL_FEATURE_PATH))
-
-try:
-    f = joblib.load(FINAL_FEATURE_PATH)
-    st.write("FINAL_FEATURES yang sedang dipakai Streamlit:")
-    st.write(f)
-except Exception as e:
-    st.error(f"Gagal load FINAL_FEATURE_PATH: {e}")
-
-st.write("CHECK FINAL FEATURES YANG LOADED:")
-st.write(final_features)
-st.write("Jumlah kolom:", len(final_features))
-
-# =====================================================
-# ** FIX: Ambil kolom dari preprocess, bukan dari df **
-# =====================================================
-num_cols = preprocess.transformers_[0][2]    # numeric columns saat training
-cat_cols = preprocess.transformers_[1][2]    # categorical columns saat training
+# Ambil feature names dari model (INI YANG BENAR)
+model_features = model.get_booster().feature_names
 
 # ================================
 # SIDEBAR
@@ -81,66 +35,42 @@ st.sidebar.title("Navigation")
 page = st.sidebar.selectbox("Go to:", ["Prediction", "EDA"])
 
 # ================================
-# PAGE 1 — PREDICTION
+# PAGE — PREDICTION
 # ================================
 if page == "Prediction":
 
     st.title("Customer Churn Prediction")
-    st.write("Isi informasi customer untuk prediksi churn.")
+    st.write("Isi informasi customer sesuai fitur model.")
 
     input_data = {}
 
     with st.form("form_customer"):
-        st.subheader("Customer Details")
-
-        # NUMERIC INPUT
-        for col in num_cols:
-            default_val = float(df[col].median()) if col in df.columns else 0
-            input_data[col] = st.number_input(col, value=default_val)
-
-        # CATEGORICAL INPUT
-        for col in cat_cols:
+        for col in model_features:
             if col in df.columns:
-                options = sorted(df[col].dropna().unique().tolist())
-                input_data[col] = st.selectbox(col, options)
+                # Auto detect categorical or numeric
+                if df[col].dtype == "object":
+                    options = sorted(df[col].dropna().unique().tolist())
+                    input_data[col] = st.selectbox(col, options)
+                else:
+                    default_val = float(df[col].median())
+                    input_data[col] = st.number_input(col, value=default_val)
             else:
+                # Fallback
                 input_data[col] = st.text_input(col)
 
         submitted = st.form_submit_button("Predict")
 
     if submitted:
-        # DATAFRAME INPUT USER
         input_df = pd.DataFrame([input_data])
 
-        processed_df = input_df[model.get_booster().feature_names]
+        # Pastikan urutan kolom sesuai model
+        input_df = input_df[model_features]
 
-
-        # DEBUGGING
-        st.subheader("Debug Info")
-        st.write("Raw Input DF:")
+        st.subheader("Processed Input")
         st.write(input_df)
 
-        st.write("Processed DF:")
-        st.write(processed_df)
-
-        st.write("Processed DF Columns:")
-        st.write(processed_df.columns.tolist())
-
-        unique_counts = processed_df.nunique()
-        st.write("Unique values per column:")
-        st.write(unique_counts)
-
-        # FILTER FINAL FEATURES
-        if all(col in processed_df.columns for col in final_features):
-            processed_df = processed_df[final_features]
-        else:
-            missing = [c for c in final_features if c not in processed_df.columns]
-            st.error(f"Missing columns in processed DF: {missing}")
-            st.stop()
-
-        # PREDIKSI
-        pred = model.predict(processed_df)[0]
-        prob = model.predict_proba(processed_df)[0][1]
+        pred = model.predict(input_df)[0]
+        prob = model.predict_proba(input_df)[0][1]
 
         st.subheader("Prediction Result")
 
@@ -150,7 +80,7 @@ if page == "Prediction":
             st.success(f"Customer TIDAK churn. Probability: {prob:.2f}")
 
 # ================================
-# PAGE 2 — EDA
+# PAGE — EDA
 # ================================
 else:
     st.title("Exploratory Data Analysis (EDA)")
@@ -163,7 +93,9 @@ else:
 
     st.markdown("---")
 
-    # numerical dist
+    # Numerical features only
+    num_cols = df.select_dtypes(include=['int64','float64']).columns
+
     st.subheader("Numerical Feature Distribution")
     selected_num = st.selectbox("Pilih kolom numerik:", num_cols)
 
@@ -173,7 +105,9 @@ else:
 
     st.markdown("---")
 
-    # categorical dist
+    # Categorical features
+    cat_cols = df.select_dtypes(include=['object']).columns
+
     st.subheader("Categorical Feature Distribution")
     selected_cat = st.selectbox("Pilih kolom kategorik:", cat_cols)
 
@@ -183,7 +117,7 @@ else:
 
     st.markdown("---")
 
-    # correlation
+    # Correlation
     st.subheader("Correlation Heatmap")
     corr = df[num_cols].corr()
 
