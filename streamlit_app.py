@@ -144,7 +144,7 @@ with tab5:
         with st.spinner("Processing..."):
             user_processed = preprocess.transform(user_input)
             
-            with open("model.pkl","rb") as f:
+            with open("model_churn.pkl","rb") as f:
                 model = pickle.load(f)
             
             prediction = model.predict(user_processed)
