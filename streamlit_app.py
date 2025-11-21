@@ -85,15 +85,20 @@ if page == "Prediction":
         # PREPROCESS TRANSFORM
         processed = preprocess.transform(input_df)
 
-        # KONVERSI KE DATAFRAME DGN FINAL FEATURE
+
+        # KONVERSI KE DATAFRAME HASIL PREPROCESS
         processed_df = pd.DataFrame(processed, columns=preprocess.get_feature_names_out())
-
+        
+        # FIX: bersihkan prefix ('num__', 'cat__') agar cocok dengan final_features
+        processed_df.columns = processed_df.columns.str.replace("num__", "", regex=False)
+        processed_df.columns = processed_df.columns.str.replace("cat__", "", regex=False)
+        
+        # CEK missing columns lagi setelah prefix dibersihkan
         missing = [col for col in final_features if col not in processed_df.columns]
-        st.write("Missing columns:", missing)
-        st.write("Processed DF columns:", processed_df.columns.tolist())
-
-
-        # FILTER HANYA FINAL FEATURES DARI VIF
+        if missing:
+            st.warning(f"Ada kolom yang hilang setelah preprocessing: {missing}")
+        
+        # FILTER HANYA FINAL FEATURES
         processed_df = processed_df[final_features]
 
         # PREDIKSI
