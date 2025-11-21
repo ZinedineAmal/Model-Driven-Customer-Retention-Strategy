@@ -46,6 +46,19 @@ model = load_model()
 preprocess = load_preprocess()
 df = load_data()
 final_features = load_final_features()
+
+# DEBUGGING — CEK WORKING DIRECTORY & FILE YANG DIPAKAI
+st.write("Working directory:", os.getcwd())
+st.write("FINAL_FEATURE_PATH:", FINAL_FEATURE_PATH)
+st.write("File exists?", os.path.exists(FINAL_FEATURE_PATH))
+
+try:
+    f = joblib.load(FINAL_FEATURE_PATH)
+    st.write("FINAL_FEATURES yang sedang dipakai Streamlit:")
+    st.write(f)
+except Exception as e:
+    st.error(f"Gagal load FINAL_FEATURE_PATH: {e}")
+
 st.write("CHECK FINAL FEATURES YANG LOADED:")
 st.write(final_features)
 st.write("Jumlah kolom:", len(final_features))
