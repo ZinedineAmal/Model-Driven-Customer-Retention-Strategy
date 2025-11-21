@@ -6,31 +6,26 @@ st.set_page_config(page_title="Interactive Churn Dashboard", layout="wide")
 st.title("Interactive Customer Churn Dashboard")
 
 # ---------------- Load Dataset ----------------
-@st.cache_data
-def load_data(path):
-    df = pd.read_csv(path)
-    return df
-
-df = load_data("clean_df.csv")
+clean_df = pd.read_csv("clean_df.csv")  # pastikan dataset sudah bernama clean_df
 
 # ---------------- Preprocessing ----------------
-df['age_group'] = pd.cut(df['age'], bins=[0,27,44,60,float('inf')],
-                         labels=['Gen Z','Millennials','Generation X','Senior Citizen'])
-df['tenure_group'] = pd.cut(df['tenure'], bins=[0,6,12,float('inf')],
-                            labels=['0-6 months','6-12 months','>12 months'])
+clean_df['age_group'] = pd.cut(clean_df['age'], bins=[0,27,44,60,float('inf')],
+                              labels=['Gen Z','Millennials','Generation X','Senior Citizen'])
+clean_df['tenure_group'] = pd.cut(clean_df['tenure'], bins=[0,6,12,float('inf')],
+                                 labels=['0-6 months','6-12 months','>12 months'])
 
 # ---------------- Sidebar Filters ----------------
 st.sidebar.header("Filter Options")
-gender_filter = st.sidebar.multiselect("Gender", options=df['gender'].unique(), default=df['gender'].unique())
-age_group_filter = st.sidebar.multiselect("Age Group", options=df['age_group'].dropna().unique(), default=df['age_group'].dropna().unique())
-tenure_group_filter = st.sidebar.multiselect("Tenure Group", options=df['tenure_group'].dropna().unique(), default=df['tenure_group'].dropna().unique())
-status_filter = st.sidebar.multiselect("Churn Status", options=df['churn_value'].unique(), default=df['churn_value'].unique())
+gender_filter = st.sidebar.multiselect("Gender", options=clean_df['gender'].unique(), default=clean_df['gender'].unique())
+age_group_filter = st.sidebar.multiselect("Age Group", options=clean_df['age_group'].dropna().unique(), default=clean_df['age_group'].dropna().unique())
+tenure_group_filter = st.sidebar.multiselect("Tenure Group", options=clean_df['tenure_group'].dropna().unique(), default=clean_df['tenure_group'].dropna().unique())
+status_filter = st.sidebar.multiselect("Churn Status", options=clean_df['churn_value'].unique(), default=clean_df['churn_value'].unique())
 
-filtered_df = df[
-    (df['gender'].isin(gender_filter)) &
-    (df['age_group'].isin(age_group_filter)) &
-    (df['tenure_group'].isin(tenure_group_filter)) &
-    (df['churn_value'].isin(status_filter))
+filtered_df = clean_df[
+    (clean_df['gender'].isin(gender_filter)) &
+    (clean_df['age_group'].isin(age_group_filter)) &
+    (clean_df['tenure_group'].isin(tenure_group_filter)) &
+    (clean_df['churn_value'].isin(status_filter))
 ]
 
 # ---------------- Tabs ----------------
@@ -55,12 +50,14 @@ with tab2:
     
     # Gender
     gender_count = churned['gender'].value_counts().rename_axis('gender').reset_index(name='count')
-    fig = px.bar(gender_count, x='gender', y='count', color='gender', color_discrete_sequence=px.colors.sequential.Reds)
+    fig = px.bar(gender_count, x='gender', y='count', color='gender', 
+                 color_discrete_sequence=px.colors.sequential.Reds)
     st.plotly_chart(fig, use_container_width=True)
     
     # Age group
     age_count = churned['age_group'].value_counts().rename_axis('age_group').reset_index(name='count')
-    fig = px.bar(age_count, x='age_group', y='count', color='age_group', color_discrete_sequence=px.colors.sequential.Orange)
+    fig = px.bar(age_count, x='age_group', y='count', color='age_group', 
+                 color_discrete_sequence=px.colors.sequential.Oranges)
     st.plotly_chart(fig, use_container_width=True)
     
     # Online Services Pie Charts
@@ -71,13 +68,15 @@ with tab2:
     for col in service_select:
         if col in churned.columns:
             data = churned[col].value_counts().rename_axis(col).reset_index(name='count')
-            fig = px.pie(data, names=col, values='count', hole=0.3, color=col, color_discrete_sequence=px.colors.sequential.RdBu)
+            fig = px.pie(data, names=col, values='count', hole=0.3, 
+                         color=col, color_discrete_sequence=px.colors.sequential.RdBu)
             st.plotly_chart(fig, use_container_width=True)
     
     # Top Churn Reasons
     if 'churn_reason' in churned.columns:
         top_reasons = churned['churn_reason'].value_counts().head(10).rename_axis('reason').reset_index(name='count')
-        fig = px.bar(top_reasons, x='count', y='reason', orientation='h', color='count', color_continuous_scale='magma')
+        fig = px.bar(top_reasons, x='count', y='reason', orientation='h', color='count', 
+                     color_continuous_scale='magma')
         st.plotly_chart(fig, use_container_width=True)
 
 # ---------------- Tab 3: Loyal Analysis ----------------
@@ -88,6 +87,7 @@ with tab3:
         offer_group = loyal.groupby('offer')['number_of_referrals'].agg(['count', lambda x: (x>=3).sum()]).reset_index()
         offer_group.columns = ['Offer','Total Customers','With >=3 Referrals']
         st.dataframe(offer_group)
+        st.info("Insight: Loyal customers sering refer teman meski tanpa offer.")
 
 # ---------------- Tab 4: Correlation Heatmap ----------------
 with tab4:
