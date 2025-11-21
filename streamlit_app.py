@@ -112,11 +112,8 @@ if page == "Prediction":
         # DATAFRAME INPUT USER
         input_df = pd.DataFrame([input_data])
 
-        # PREPROCESS TRANSFORM
-        processed = preprocess.transform(input_df)
+        processed_df = input_df[model.get_booster().feature_names]
 
-        # KONVERSI KE DATAFRAME DENGAN NAMA KOLOM ASLI
-        processed_df = pd.DataFrame(processed, columns=preprocess.get_feature_names_out())
 
         # DEBUGGING
         st.subheader("Debug Info")
