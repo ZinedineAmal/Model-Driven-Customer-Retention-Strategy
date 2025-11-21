@@ -62,12 +62,10 @@ if page == "Prediction":
     with st.form("form_customer"):
         st.subheader("Customer Details")
 
-        # numeric inputs
         for col in num_cols:
             default_val = float(df[col].median())
             input_data[col] = st.number_input(col, value=default_val)
 
-        # categorical inputs
         for col in cat_cols:
             options = sorted(df[col].dropna().unique().tolist())
             input_data[col] = st.selectbox(col, options)
@@ -77,12 +75,18 @@ if page == "Prediction":
     if submitted:
         input_df = pd.DataFrame([input_data])
 
-        # apply preprocessing
+        # APPLY PREPROCESS
         processed = preprocess.transform(input_df)
 
-        # prediction
-        pred = model.predict(processed)[0]
-        prob = model.predict_proba(processed)[0][1]
+        # CONVERT TO DATAFRAME WITH CORRECT FEATURE NAMES
+        processed_df = pd.DataFrame(
+            processed,
+            columns=preprocess.get_feature_names_out()
+        )
+
+        # APPLY MODEL
+        pred = model.predict(processed_df)[0]
+        prob = model.predict_proba(processed_df)[0][1]
 
         st.subheader("Prediction Result")
 
