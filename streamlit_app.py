@@ -44,6 +44,9 @@ model = load_model()
 preprocess = load_preprocess()
 df = load_data()
 final_features = load_final_features()
+st.write("CHECK FINAL FEATURES YANG LOADED:")
+st.write(final_features)
+st.write("Jumlah kolom:", len(final_features))
 
 # =====================================================
 # ** FIX: Ambil kolom dari preprocess, bukan dari df **
