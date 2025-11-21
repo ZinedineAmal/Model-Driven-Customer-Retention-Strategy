@@ -39,6 +39,8 @@ model = load_model()
 preprocess = load_preprocess()
 df = load_data()
 
+st.write("Model expected features:", model.feature_names_in_)
+st.write("Preprocess output features:", preprocess.get_feature_names_out())
 # detect columns
 num_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
 cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
