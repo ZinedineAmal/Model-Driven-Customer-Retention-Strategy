@@ -11,7 +11,7 @@ def load_data(path):
     df = pd.read_csv(path)
     return df
 
-df = load_data("data.csv")
+df = load_data("clean_df.csv")
 
 # ---------------- Preprocessing ----------------
 df['age_group'] = pd.cut(df['age'], bins=[0,27,44,60,float('inf')],
