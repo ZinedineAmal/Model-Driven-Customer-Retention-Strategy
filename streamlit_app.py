@@ -45,6 +45,10 @@ model = load_model()
 preprocess = load_preprocess()
 df = load_data()
 final_features = load_final_features()
+
+st.write("MODEL FEATURE NAMES:")
+st.write(model.get_booster().feature_names)
+
 st.write("ISI FINAL FEATURES YANG SEBENARNYA DILOAD:")
 st.write(final_features)
 
