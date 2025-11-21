@@ -54,12 +54,7 @@ cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
 # ================================
 st.sidebar.title("Navigation")
 page = st.sidebar.selectbox("Go to:", ["Prediction", "EDA"])
-st.write("=== DEBUG ===")
-st.write("Raw Input:", input_df)
-st.write("After Preprocess:", processed_df)
-st.write("Sum row:", processed_df.sum(axis=1))
-st.write("Unique values:", processed_df.nunique())
-# ================================
+
 # PAGE 1 — PREDICTION
 # ================================
 if page == "Prediction":
@@ -104,6 +99,22 @@ if page == "Prediction":
         
         # FILTER HANYA FINAL FEATURES
         processed_df = processed_df[final_features]
+        # FILTER HANYA FINAL FEATURES DARI VIF
+        processed_df = processed_df[final_features]
+        
+        # ============== DEBUG ==============
+        st.subheader("DEBUG OUTPUT (sementara)")
+        
+        st.write("Raw Input DF:", input_df)
+        st.write("Processed DF:", processed_df.head())
+        st.write("Processed DF Columns:", processed_df.columns.tolist())
+        st.write("Sum per row:", processed_df.sum(axis=1))
+        st.write("Unique values per column:", processed_df.nunique())
+        # ===================================
+        
+        # PREDIKSI
+        pred = model.predict(processed_df)[0]
+        prob = model.predict_proba(processed_df)[0][1]
 
         # PREDIKSI
         pred = model.predict(processed_df)[0]
