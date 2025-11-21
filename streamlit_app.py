@@ -54,7 +54,11 @@ cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
 # ================================
 st.sidebar.title("Navigation")
 page = st.sidebar.selectbox("Go to:", ["Prediction", "EDA"])
-
+st.write("=== DEBUG ===")
+st.write("Raw Input:", input_df)
+st.write("After Preprocess:", processed_df)
+st.write("Sum row:", processed_df.sum(axis=1))
+st.write("Unique values:", processed_df.nunique())
 # ================================
 # PAGE 1 — PREDICTION
 # ================================
