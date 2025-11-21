@@ -3,28 +3,27 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from xgboost import XGBClassifier
-# ================================
-# LOAD ASSETS
-# ================================
-@st.cache_resource
-def load_preprocess():
-    return joblib.load("preprocess.pkl")
 
+# ================================
+# LOAD MODEL & DATA
+# ================================
 @st.cache_resource
 def load_model():
-    return joblib.load("model_churn.pkl")
+    return joblib.load("model_pipeline.pkl")
 
 @st.cache_resource
 def load_data():
     return pd.read_csv("df_clean.csv")
 
-preprocess = load_preprocess()
 model = load_model()
 df = load_data()
 
+# detect columns
+num_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+
 # ================================
-# SIDEBAR
+# SIDEBAR NAVIGATION
 # ================================
 st.sidebar.title("Navigation")
 page = st.sidebar.selectbox("Go to:", ["Prediction", "EDA"])
@@ -38,11 +37,6 @@ if page == "Prediction":
 
     st.write("Isi informasi customer untuk memprediksi apakah mereka akan churn atau tidak.")
 
-    # detect columns
-    num_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-
-    # input form
     input_data = {}
 
     with st.form("form_customer"):
@@ -60,12 +54,11 @@ if page == "Prediction":
 
         submitted = st.form_submit_button("Predict")
 
-    # prediction
     if submitted:
         input_df = pd.DataFrame([input_data])
-        X_trans = preprocess.transform(input_df)
-        pred = model.predict(X_trans)[0]
-        prob = model.predict_proba(X_trans)[0][1]
+
+        pred = model.predict(input_df)[0]
+        prob = model.predict_proba(input_df)[0][1]
 
         st.subheader("🔍 Prediction Result")
 
@@ -74,11 +67,10 @@ if page == "Prediction":
         else:
             st.success(f"✅ Customer TIDAK churn.\n\n**Probability: {prob:.2f}**")
 
-
 # ================================
 # PAGE 2 — EDA
 # ================================
-elif page == "EDA":
+else:
 
     st.title("📊 Exploratory Data Analysis (EDA)")
 
@@ -90,12 +82,8 @@ elif page == "EDA":
 
     st.markdown("---")
 
-    # =====================
-    # DISTRIBUTION NUMERIC
-    # =====================
+    # numerical distribution
     st.subheader("🔢 Numerical Features Distribution")
-
-    num_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
 
     selected_num = st.selectbox("Pilih kolom numerik:", num_cols)
 
@@ -105,12 +93,8 @@ elif page == "EDA":
 
     st.markdown("---")
 
-    # =====================
-    # DISTRIBUTION CATEGORICAL
-    # =====================
+    # categorical distribution
     st.subheader("🔤 Categorical Features Distribution")
-
-    cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
 
     selected_cat = st.selectbox("Pilih kolom kategorik:", cat_cols)
 
@@ -120,9 +104,7 @@ elif page == "EDA":
 
     st.markdown("---")
 
-    # =====================
-    # CORRELATION HEATMAP
-    # =====================
+    # correlation heatmap
     st.subheader("📈 Correlation Heatmap")
 
     corr = df[num_cols].corr()
@@ -133,5 +115,4 @@ elif page == "EDA":
 
     st.markdown("---")
 
-    st.success("EDA Selesai! Kamu bisa pindah ke halaman Prediction di sidebar.")
-
+    st.success("EDA Selesai! Silakan pindah ke halaman Prediction.")
