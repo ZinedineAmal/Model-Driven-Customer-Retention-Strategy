@@ -1,25 +1,59 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import pickle
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder
+from sklearn.compose import ColumnTransformer
 
-st.set_page_config(page_title="Interactive Churn Dashboard", layout="wide")
-st.title("Interactive Customer Churn Dashboard")
+st.set_page_config(page_title="Customer Churn Dashboard + Prediction", layout="wide")
+st.title("Interactive Customer Churn Dashboard & Prediction")
 
 # ---------------- Load Dataset ----------------
-clean_df = pd.read_csv("clean_df.csv")  # pastikan dataset sudah bernama clean_df
+@st.cache_data
+def load_data():
+    # Bisa diganti dengan GitHub raw CSV link
+    return pd.read_csv("clean_df.csv")  
+
+clean_df = load_data()
 
 # ---------------- Preprocessing ----------------
+# Kolom final yang dipakai model
+final_cols = ['gender','age','senior_citizen','dependents','number_of_dependents',
+              'phone_service','device_protection','premium_tech_support',
+              'streaming_tv','streaming_movies','streaming_music',
+              'internet_type','contract','paperless_billing','payment_method',
+              'monthly_charges','avg_monthly_long_distance_charges','tenure',
+              'avg_monthly_gb_download','unlimited_data','offer','satisfaction_score',
+              'cltv','churn_score']
+
+numeric_cols = ['age','number_of_dependents','monthly_charges','avg_monthly_long_distance_charges',
+                'tenure','avg_monthly_gb_download','satisfaction_score','cltv','churn_score']
+
+cat_cols = [col for col in final_cols if col not in numeric_cols]
+
+# ColumnTransformer
+preprocess = ColumnTransformer([
+    ('num', StandardScaler(), numeric_cols),
+    ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)
+])
+
+# Fit preprocessing on full clean_df (EDA) just for prediction tab
+preprocess.fit(clean_df[final_cols])
+
+# ---------------- Sidebar Filters for EDA ----------------
+st.sidebar.header("Filter Options (EDA)")
+gender_filter = st.sidebar.multiselect("Gender", options=clean_df['gender'].unique(), default=clean_df['gender'].unique())
+age_group_filter = st.sidebar.multiselect("Age Group", options=['Gen Z','Millennials','Generation X','Senior Citizen'],
+                                          default=['Gen Z','Millennials','Generation X','Senior Citizen'])
+tenure_group_filter = st.sidebar.multiselect("Tenure Group", options=['0-6 months','6-12 months','>12 months'],
+                                             default=['0-6 months','6-12 months','>12 months'])
+status_filter = st.sidebar.multiselect("Churn Status", options=[0,1], default=[0,1])
+
+# Add age_group & tenure_group for filtering
 clean_df['age_group'] = pd.cut(clean_df['age'], bins=[0,27,44,60,float('inf')],
                               labels=['Gen Z','Millennials','Generation X','Senior Citizen'])
 clean_df['tenure_group'] = pd.cut(clean_df['tenure'], bins=[0,6,12,float('inf')],
                                  labels=['0-6 months','6-12 months','>12 months'])
-
-# ---------------- Sidebar Filters ----------------
-st.sidebar.header("Filter Options")
-gender_filter = st.sidebar.multiselect("Gender", options=clean_df['gender'].unique(), default=clean_df['gender'].unique())
-age_group_filter = st.sidebar.multiselect("Age Group", options=clean_df['age_group'].dropna().unique(), default=clean_df['age_group'].dropna().unique())
-tenure_group_filter = st.sidebar.multiselect("Tenure Group", options=clean_df['tenure_group'].dropna().unique(), default=clean_df['tenure_group'].dropna().unique())
-status_filter = st.sidebar.multiselect("Churn Status", options=clean_df['churn_value'].unique(), default=clean_df['churn_value'].unique())
 
 filtered_df = clean_df[
     (clean_df['gender'].isin(gender_filter)) &
@@ -29,7 +63,7 @@ filtered_df = clean_df[
 ]
 
 # ---------------- Tabs ----------------
-tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Churn Analysis", "Loyal Analysis", "Correlation Heatmap"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Overview", "Churn Analysis", "Loyal Analysis", "Correlation Heatmap", "Prediction"])
 
 # ---------------- Tab 1: Overview ----------------
 with tab1:
@@ -37,8 +71,6 @@ with tab1:
     churn_counts = filtered_df['churn_value'].value_counts().rename({0:"No Churn",1:"Churn"})
     st.metric("Churned Customers", f"{churn_counts.get('Churn',0)}", f"{churn_counts.get('Churn',0)/len(filtered_df)*100:.1f}%")
     st.metric("Stayed Customers", f"{churn_counts.get('No Churn',0)}", f"{churn_counts.get('No Churn',0)/len(filtered_df)*100:.1f}%")
-    
-    # Pie Chart Plotly
     fig = px.pie(values=churn_counts.values, names=churn_counts.index, color=churn_counts.index,
                  color_discrete_map={'No Churn':'indigo','Churn':'salmon'}, hole=0.3)
     st.plotly_chart(fig, use_container_width=True)
@@ -59,25 +91,6 @@ with tab2:
     fig = px.bar(age_count, x='age_group', y='count', color='age_group', 
                  color_discrete_sequence=px.colors.sequential.Oranges)
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Online Services Pie Charts
-    online_services = ['internet_service', 'online_security', 'online_backup', 'device_protection', 
-                       'premium_tech_support', 'streaming_tv', 'streaming_movies', 'streaming_music']
-    service_select = st.multiselect("Select online services", online_services, default=online_services[:3])
-    
-    for col in service_select:
-        if col in churned.columns:
-            data = churned[col].value_counts().rename_axis(col).reset_index(name='count')
-            fig = px.pie(data, names=col, values='count', hole=0.3, 
-                         color=col, color_discrete_sequence=px.colors.sequential.RdBu)
-            st.plotly_chart(fig, use_container_width=True)
-    
-    # Top Churn Reasons
-    if 'churn_reason' in churned.columns:
-        top_reasons = churned['churn_reason'].value_counts().head(10).rename_axis('reason').reset_index(name='count')
-        fig = px.bar(top_reasons, x='count', y='reason', orientation='h', color='count', 
-                     color_continuous_scale='magma')
-        st.plotly_chart(fig, use_container_width=True)
 
 # ---------------- Tab 3: Loyal Analysis ----------------
 with tab3:
@@ -87,7 +100,6 @@ with tab3:
         offer_group = loyal.groupby('offer')['number_of_referrals'].agg(['count', lambda x: (x>=3).sum()]).reset_index()
         offer_group.columns = ['Offer','Total Customers','With >=3 Referrals']
         st.dataframe(offer_group)
-        st.info("Insight: Loyal customers sering refer teman meski tanpa offer.")
 
 # ---------------- Tab 4: Correlation Heatmap ----------------
 with tab4:
@@ -99,3 +111,32 @@ with tab4:
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("Tidak ada kolom numerik untuk correlation matrix")
+
+# ---------------- Tab 5: Prediction ----------------
+with tab5:
+    st.subheader("Predict Churn for a New Customer")
+    
+    # Input form
+    with st.form("prediction_form"):
+        inputs = {}
+        for col in final_cols:
+            if col in numeric_cols:
+                inputs[col] = st.number_input(col, value=float(clean_df[col].median()))
+            else:
+                inputs[col] = st.selectbox(col, clean_df[col].unique())
+        submitted = st.form_submit_button("Predict")
+    
+    if submitted:
+        user_input = pd.DataFrame({k:[v] for k,v in inputs.items()})
+        # Preprocess user input
+        user_processed = preprocess.transform(user_input)
+        
+        # Load model
+        with open("model_churn.pkl", "rb") as f:
+            model = pickle.load(f)
+        
+        prediction = model.predict(user_processed)
+        prediction_proba = model.predict_proba(user_processed)
+        
+        st.write("Predicted Churn:", "Yes" if prediction[0]==1 else "No")
+        st.write("Probability of Churn:", f"{prediction_proba[0][1]*100:.2f}%")
