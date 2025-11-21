@@ -10,7 +10,7 @@ import seaborn as sns
 # ================================
 MODEL_PATH = "model_churn.pkl"
 PREPROCESS_PATH = "preprocess.pkl"
-DATA_PATH = "clean_df.csv"
+DATA_PATH = "clean_df_1.csv"
 FINAL_FEATURE_PATH = "final_features (1).pkl"
 
 # ================================
@@ -45,9 +45,11 @@ preprocess = load_preprocess()
 df = load_data()
 final_features = load_final_features()
 
-# detect columns
-num_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
-cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+# =====================================================
+# ** FIX: Ambil kolom dari preprocess, bukan dari df **
+# =====================================================
+num_cols = preprocess.transformers_[0][2]    # numeric columns saat training
+cat_cols = preprocess.transformers_[1][2]    # categorical columns saat training
 
 # ================================
 # SIDEBAR
@@ -55,6 +57,7 @@ cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
 st.sidebar.title("Navigation")
 page = st.sidebar.selectbox("Go to:", ["Prediction", "EDA"])
 
+# ================================
 # PAGE 1 — PREDICTION
 # ================================
 if page == "Prediction":
@@ -67,13 +70,18 @@ if page == "Prediction":
     with st.form("form_customer"):
         st.subheader("Customer Details")
 
+        # NUMERIC INPUT
         for col in num_cols:
-            default_val = float(df[col].median())
+            default_val = float(df[col].median()) if col in df.columns else 0
             input_data[col] = st.number_input(col, value=default_val)
 
+        # CATEGORICAL INPUT
         for col in cat_cols:
-            options = sorted(df[col].dropna().unique().tolist())
-            input_data[col] = st.selectbox(col, options)
+            if col in df.columns:
+                options = sorted(df[col].dropna().unique().tolist())
+                input_data[col] = st.selectbox(col, options)
+            else:
+                input_data[col] = st.text_input(col)
 
         submitted = st.form_submit_button("Predict")
 
@@ -84,37 +92,31 @@ if page == "Prediction":
         # PREPROCESS TRANSFORM
         processed = preprocess.transform(input_df)
 
-
-        # KONVERSI KE DATAFRAME HASIL PREPROCESS
+        # KONVERSI KE DATAFRAME DENGAN NAMA KOLOM ASLI
         processed_df = pd.DataFrame(processed, columns=preprocess.get_feature_names_out())
-        
-        # FIX: bersihkan prefix ('num__', 'cat__') agar cocok dengan final_features
-        processed_df.columns = processed_df.columns.str.replace("num__", "", regex=False)
-        processed_df.columns = processed_df.columns.str.replace("cat__", "", regex=False)
-        
-        # CEK missing columns lagi setelah prefix dibersihkan
-        missing = [col for col in final_features if col not in processed_df.columns]
-        if missing:
-            st.warning(f"Ada kolom yang hilang setelah preprocessing: {missing}")
-        
-        # FILTER HANYA FINAL FEATURES
-        processed_df = processed_df[final_features]
-        # FILTER HANYA FINAL FEATURES DARI VIF
-        processed_df = processed_df[final_features]
-        
-        # ============== DEBUG ==============
-        st.subheader("DEBUG OUTPUT (sementara)")
-        
-        st.write("Raw Input DF:", input_df)
-        st.write("Processed DF:", processed_df.head())
-        st.write("Processed DF Columns:", processed_df.columns.tolist())
-        st.write("Sum per row:", processed_df.sum(axis=1))
-        st.write("Unique values per column:", processed_df.nunique())
-        # ===================================
-        
-        # PREDIKSI
-        pred = model.predict(processed_df)[0]
-        prob = model.predict_proba(processed_df)[0][1]
+
+        # DEBUGGING
+        st.subheader("Debug Info")
+        st.write("Raw Input DF:")
+        st.write(input_df)
+
+        st.write("Processed DF:")
+        st.write(processed_df)
+
+        st.write("Processed DF Columns:")
+        st.write(processed_df.columns.tolist())
+
+        unique_counts = processed_df.nunique()
+        st.write("Unique values per column:")
+        st.write(unique_counts)
+
+        # FILTER FINAL FEATURES
+        if all(col in processed_df.columns for col in final_features):
+            processed_df = processed_df[final_features]
+        else:
+            missing = [c for c in final_features if c not in processed_df.columns]
+            st.error(f"Missing columns in processed DF: {missing}")
+            st.stop()
 
         # PREDIKSI
         pred = model.predict(processed_df)[0]
