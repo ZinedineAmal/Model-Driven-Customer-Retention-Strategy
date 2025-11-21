@@ -46,6 +46,8 @@ model = load_model()
 preprocess = load_preprocess()
 df = load_data()
 final_features = load_final_features()
+st.write("ISI FINAL FEATURES YANG SEBENARNYA DILOAD:")
+st.write(final_features)
 
 # DEBUGGING — CEK WORKING DIRECTORY & FILE YANG DIPAKAI
 st.write("Working directory:", os.getcwd())
