@@ -11,13 +11,11 @@ st.title("Interactive Customer Churn Dashboard & Prediction")
 # ---------------- Load Dataset ----------------
 @st.cache_data
 def load_data():
-    # Bisa diganti dengan GitHub raw CSV link
-    return pd.read_csv("clean_df.csv")  
+    return pd.read_csv("clean_df.csv")  # ganti dengan GitHub raw CSV link
 
 clean_df = load_data()
 
-# ---------------- Preprocessing ----------------
-# Kolom final yang dipakai model
+# ---------------- Columns ----------------
 final_cols = ['gender','age','senior_citizen','dependents','number_of_dependents',
               'phone_service','device_protection','premium_tech_support',
               'streaming_tv','streaming_movies','streaming_music',
@@ -28,16 +26,13 @@ final_cols = ['gender','age','senior_citizen','dependents','number_of_dependents
 
 numeric_cols = ['age','number_of_dependents','monthly_charges','avg_monthly_long_distance_charges',
                 'tenure','avg_monthly_gb_download','satisfaction_score','cltv','churn_score']
-
 cat_cols = [col for col in final_cols if col not in numeric_cols]
 
-# ColumnTransformer
+# ColumnTransformer fit ke clean_df
 preprocess = ColumnTransformer([
     ('num', StandardScaler(), numeric_cols),
     ('cat', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), cat_cols)
 ])
-
-# Fit preprocessing on full clean_df (EDA) just for prediction tab
 preprocess.fit(clean_df[final_cols])
 
 # ---------------- Sidebar Filters for EDA ----------------
@@ -128,13 +123,18 @@ with tab5:
     
     if submitted:
         user_input = pd.DataFrame({k:[v] for k,v in inputs.items()})
-        # Preprocess user input
+        
+        # Pastikan kolom urut sesuai final_cols
+        user_input = user_input[final_cols]
+        
+        # Preprocess
         user_processed = preprocess.transform(user_input)
         
         # Load model
         with open("model_churn.pkl", "rb") as f:
             model = pickle.load(f)
         
+        # Predict
         prediction = model.predict(user_processed)
         prediction_proba = model.predict_proba(user_processed)
         
