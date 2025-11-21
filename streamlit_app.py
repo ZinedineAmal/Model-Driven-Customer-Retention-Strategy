@@ -45,10 +45,6 @@ preprocess = load_preprocess()
 df = load_data()
 final_features = load_final_features()
 
-missing = [col for col in final_features if col not in processed_df.columns]
-st.write("Missing columns:", missing)
-st.write("Processed DF columns:", processed_df.columns.tolist())
-
 # detect columns
 num_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
 cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
@@ -91,6 +87,11 @@ if page == "Prediction":
 
         # KONVERSI KE DATAFRAME DGN FINAL FEATURE
         processed_df = pd.DataFrame(processed, columns=preprocess.get_feature_names_out())
+
+        missing = [col for col in final_features if col not in processed_df.columns]
+        st.write("Missing columns:", missing)
+        st.write("Processed DF columns:", processed_df.columns.tolist())
+
 
         # FILTER HANYA FINAL FEATURES DARI VIF
         processed_df = processed_df[final_features]
