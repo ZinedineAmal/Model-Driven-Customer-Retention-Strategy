@@ -10,3 +10,4 @@ seaborn==0.12.2
 plotly.express
 altair
 pillow>=9.0.0
+xgboost
