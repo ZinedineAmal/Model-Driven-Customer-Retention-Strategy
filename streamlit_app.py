@@ -202,6 +202,10 @@ with tab5:
 
             with open("model_churn_XGB (1).pkl","rb") as f:
                 model = pickle.load(f)
+            st.write("Shape user_processed:", user_processed.shape)
+
+            import xgboost as xgb
+            st.write("Model expects features:", model.get_booster().num_features())
 
             prediction = model.predict(user_processed)
             prediction_proba = model.predict_proba(user_processed)
