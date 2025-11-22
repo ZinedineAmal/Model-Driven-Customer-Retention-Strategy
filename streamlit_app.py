@@ -22,21 +22,26 @@ def load_data():
 clean_df = load_data()
 
 # ---------------------------------------------------------------
-# COLUMN DEFINITIONS
+# COLUMN DEFINITIONS — FIXED BASED ON X_TRAIN YOU PROVIDED
 # ---------------------------------------------------------------
 final_cols = [
-    'age','number_of_dependents','monthly_charges','avg_monthly_long_distance_charges',
-    'tenure','avg_monthly_gb_download','number_of_referrals','satisfaction_score',
-    'cltv','churn_score','gender','senior_citizen','dependents','city','phone_service',
-    'online_security','online_backup','device_protection','premium_tech_support',
-    'streaming_tv','streaming_movies','streaming_music','internet_type','contract',
-    'paperless_billing','payment_method','multiple_lines','unlimited_data','offer'
+    'gender', 'age', 'senior_citizen', 'dependents', 'number_of_dependents',
+    'married', 'city', 'phone_service', 'internet_service',
+    'online_security', 'online_backup', 'device_protection',
+    'premium_tech_support', 'streaming_tv', 'streaming_movies',
+    'streaming_music', 'internet_type', 'contract', 'paperless_billing',
+    'payment_method', 'monthly_charges',
+    'avg_monthly_long_distance_charges', 'tenure', 'multiple_lines',
+    'avg_monthly_gb_download', 'unlimited_data', 'offer',
+    'referred_a_friend', 'number_of_referrals', 'satisfaction_score',
+    'cltv', 'churn_score'
 ]
 
 numeric_cols = [
-    'age','number_of_dependents','monthly_charges','avg_monthly_long_distance_charges',
-    'tenure','avg_monthly_gb_download','number_of_referrals','satisfaction_score',
-    'cltv','churn_score'
+    'age', 'number_of_dependents', 'monthly_charges',
+    'avg_monthly_long_distance_charges', 'tenure',
+    'avg_monthly_gb_download', 'number_of_referrals',
+    'satisfaction_score', 'cltv', 'churn_score'
 ]
 
 cat_cols = [col for col in final_cols if col not in numeric_cols]
@@ -49,7 +54,8 @@ preprocess = ColumnTransformer([
     ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), cat_cols)
 ])
 
-preprocess.fit(clean_df[final_cols])  # HARUS SAMA DGN PREPROCESS SAAT TRAIN MODEL
+# Fit preprocess on clean_df → must match model training
+preprocess.fit(clean_df[final_cols])
 
 # ---------------------------------------------------------------
 # SIDEBAR FILTERS
